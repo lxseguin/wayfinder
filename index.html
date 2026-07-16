@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#050a0f">
+  <title>WAYFINDER</title>
+  <style>
+    :root {
+      --c:    #00e5ff;
+      --cdim: rgba(0,229,255,0.12);
+      --cglow:rgba(0,229,255,0.35);
+      --bg:   #050a0f;
+      --fg:   #d0f0fa;
+      --mute: #2a5566;
+      --warn: #ff6b35;
+    }
+
+    *, *::before, *::after {
+      margin: 0; padding: 0; box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      height: 100%; height: 100dvh;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'SF Mono','JetBrains Mono','Fira Code','Courier New',monospace;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── HEADER ──────────────────────────────── */
+    header {
+      width: 100%;
+      padding: 18px 20px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(0,229,255,0.08);
+      flex-shrink: 0;
+    }
+
+    .wordmark {
+      font-size: 10px;
+      letter-spacing: 5px;
+      color: var(--c);
+      text-transform: uppercase;
+    }
+
+    .indicators {
+      display: flex;
+      gap: 14px;
+    }
+
+    .ind {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      color: var(--mute);
+      transition: color 0.4s;
+    }
+
+    .ind-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--mute);
+      transition: background 0.4s, box-shadow 0.4s;
+    }
+
+    .ind.on { color: var(--c); }
+    .ind.on .ind-dot {
+      background: var(--c);
+      box-shadow: 0 0 6px var(--c), 0 0 12px var(--cglow);
+    }
+
+    /* ── INPUT ───────────────────────────────── */
+    .input-row {
+      width: 100%;
+      padding: 10px 16px;
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid rgba(0,229,255,0.06);
+      flex-shrink: 0;
+    }
+
+    .inputs {
+      display: flex;
+      gap: 6px;
+      flex: 1;
+    }
+
+    input[type=number] {
+      flex: 1;
+      background: var(--cdim);
+      border: 1px solid rgba(0,229,255,0.18);
+      border-radius: 8px;
+      color: var(--fg);
+      font-family: inherit;
+      font-size: 13px;
+      padding: 11px 8px;
+      text-align: center;
+      outline: none;
+      /* hide arrows */
+      -moz-appearance: textfield;
+      appearance: textfield;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+    input::placeholder { color: var(--mute); font-size: 10px; letter-spacing: 1px; }
+    input:focus { border-color: var(--c); box-shadow: 0 0 0 2px var(--cdim); }
+
+    #set-btn {
+      background: var(--cdim);
+      border: 1px solid var(--c);
+      border-radius: 8px;
+      color: var(--c);
+      font-family: inherit;
+      font-size: 10px;
+      letter-spacing: 2px;
+      padding: 11px 16px;
+      cursor: pointer;
+      transition: background .15s, box-shadow .15s;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    #set-btn:active {
+      background: rgba(0,229,255,0.25);
+      box-shadow: 0 0 14px var(--cglow);
+    }
+
+    /* ── COMPASS STAGE ───────────────────────── */
+    .stage {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      width: 100%;
+      min-height: 0;
+    }
+
+    .compass-wrap {
+      position: relative;
+      width: min(74vw, 300px);
+      height: min(74vw, 300px);
+    }
+
+    /* compass ring SVG rotates to stay north-up */
+    #ring-svg {
+      width: 100%; height: 100%;
+      transition: transform 0.12s linear;
+    }
+
+    /* arrow wrapper rotates to point at target */
+    #arrow-wrap {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.15s ease-out;
+      opacity: 0;
+    }
+
+    .arrow-svg {
+      width: 36%; height: 36%;
+      filter: drop-shadow(0 0 8px var(--c)) drop-shadow(0 0 20px var(--cglow));
+    }
+
+    /* pulse ring when arrived */
+    #pulse {
+      position: absolute;
+      inset: 20%;
+      border-radius: 50%;
+      border: 1px solid var(--c);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    @keyframes arrived-pulse {
+      0%   { transform: scale(1);   opacity: .7; }
+      100% { transform: scale(1.5); opacity: 0;  }
+    }
+
+    /* idle hint overlay */
+    #idle-hint {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 6px;
+      pointer-events: none;
+    }
+    #idle-hint span {
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: var(--mute);
+      text-transform: uppercase;
+    }
+
+    /* ── READOUTS ─────────────────────────────── */
+    .readout {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    #dist-val {
+      font-size: clamp(40px, 12vw, 64px);
+      font-weight: 200;
+      letter-spacing: -2px;
+      color: var(--fg);
+      line-height: 1;
+      transition: color .3s;
+    }
+
+    #dist-val.arrived { color: var(--c); }
+
+    #dist-unit {
+      font-size: 10px;
+      letter-spacing: 4px;
+      color: var(--mute);
+      margin-top: 6px;
+      text-transform: uppercase;
+    }
+
+    #bearing-line {
+      font-size: 10px;
+      letter-spacing: 2.5px;
+      color: var(--mute);
+      margin-top: 8px;
+    }
+
+    /* ── FOOTER ──────────────────────────────── */
+    footer {
+      width: 100%;
+      padding: 10px 20px 18px;
+      border-top: 1px solid rgba(0,229,255,0.06);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    #status-msg {
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      color: var(--mute);
+      text-transform: uppercase;
+      max-width: 60%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #acc-badge {
+      font-size: 9px;
+      letter-spacing: 1px;
+      padding: 3px 9px;
+      border-radius: 100px;
+      border: 1px solid var(--mute);
+      color: var(--mute);
+      transition: border-color .3s, color .3s;
+    }
+    #acc-badge.good { border-color: var(--c); color: var(--c); }
+
+    /* Scanline overlay for texture */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 3px,
+        rgba(0,0,0,0.04) 3px,
+        rgba(0,0,0,0.04) 4px
+      );
+      pointer-events: none;
+      z-index: 999;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="wordmark">Wayfinder</div>
+  <div class="indicators">
+    <div class="ind" id="ind-gps">
+      <div class="ind-dot"></div>GPS
+    </div>
+    <div class="ind" id="ind-cmp">
+      <div class="ind-dot"></div>HDG
+    </div>
+    <div class="ind" id="ind-tgt">
+      <div class="ind-dot"></div>TGT
+    </div>
+  </div>
+</header>
+
+<div class="input-row">
+  <div class="inputs">
+    <input type="number" id="lat" placeholder="LATITUDE"  step="any" inputmode="decimal" autocomplete="off">
+    <input type="number" id="lon" placeholder="LONGITUDE" step="any" inputmode="decimal" autocomplete="off">
+  </div>
+  <button id="set-btn">SET</button>
+</div>
+
+<div class="stage">
+  <div class="compass-wrap">
+
+    <!-- Compass ring (rotates with heading) -->
+    <svg id="ring-svg" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+      <!-- Outer rings -->
+      <circle cx="150" cy="150" r="143" fill="none" stroke="rgba(0,229,255,0.12)" stroke-width="1"/>
+      <circle cx="150" cy="150" r="132" fill="none" stroke="rgba(0,229,255,0.05)" stroke-width="0.5"/>
+      <!-- Inner subtle fill -->
+      <circle cx="150" cy="150" r="100" fill="rgba(0,229,255,0.02)"/>
+      <!-- Tick marks drawn by JS -->
+      <g id="ticks"></g>
+      <!-- Cardinal letters -->
+      <text x="150" y="20" text-anchor="middle" fill="#00e5ff"
+            font-size="13" font-family="monospace" letter-spacing="1" font-weight="600">N</text>
+      <text x="150" y="288" text-anchor="middle" fill="rgba(0,229,255,0.4)"
+            font-size="11" font-family="monospace">S</text>
+      <text x="284"  y="155" text-anchor="middle" fill="rgba(0,229,255,0.4)"
+            font-size="11" font-family="monospace">E</text>
+      <text x="16"  y="155" text-anchor="middle" fill="rgba(0,229,255,0.4)"
+            font-size="11" font-family="monospace">W</text>
+      <!-- Centre pip -->
+      <circle cx="150" cy="150" r="3" fill="var(--c)" opacity="0.5"/>
+    </svg>
+
+    <!-- Directional arrow -->
+    <div id="arrow-wrap">
+      <svg class="arrow-svg" viewBox="0 0 80 120" xmlns="http://www.w3.org/2000/svg">
+        <!-- Arrow head (pointing up = toward target) -->
+        <polygon points="40,4 56,52 40,44 24,52" fill="#00e5ff"/>
+        <!-- Arrow tail (dim) -->
+        <polygon points="40,116 56,68 40,76 24,68" fill="rgba(0,229,255,0.22)"/>
+        <!-- Shaft -->
+        <rect x="37" y="44" width="6" height="32" fill="rgba(0,229,255,0.5)" rx="1"/>
+      </svg>
+    </div>
+
+    <!-- Arrived pulse -->
+    <div id="pulse"></div>
+
+    <!-- Idle overlay -->
+    <div id="idle-hint">
+      <span>Enter coordinates</span>
+      <span>to navigate</span>
+    </div>
+
+  </div><!-- .compass-wrap -->
+
+  <div class="readout">
+    <div id="dist-val">—</div>
+    <div id="dist-unit">DISTANCE</div>
+    <div id="bearing-line"></div>
+  </div>
+
+</div><!-- .stage -->
+
+<footer>
+  <div id="status-msg">Acquiring GPS…</div>
+  <div id="acc-badge">± — m</div>
+</footer>
+
+<script>
+// ── State ─────────────────────────────────────
+let myLat = null, myLon = null, myAcc = null;
+let tLat = null, tLon = null;
+let heading = null; // degrees, 0=N clockwise
+
+// ── DOM refs ──────────────────────────────────
+const ringSvg    = document.getElementById('ring-svg');
+const arrowWrap  = document.getElementById('arrow-wrap');
+const distVal    = document.getElementById('dist-val');
+const distUnit   = document.getElementById('dist-unit');
+const bearingLn  = document.getElementById('bearing-line');
+const statusMsg  = document.getElementById('status-msg');
+const accBadge   = document.getElementById('acc-badge');
+const indGPS     = document.getElementById('ind-gps');
+const indCmp     = document.getElementById('ind-cmp');
+const indTgt     = document.getElementById('ind-tgt');
+const idleHint   = document.getElementById('idle-hint');
+const pulse      = document.getElementById('pulse');
+
+// ── Draw tick marks ───────────────────────────
+(function () {
+  const g = document.getElementById('ticks');
+  for (let i = 0; i < 72; i++) {
+    const deg = i * 5;
+    const rad = (deg - 90) * Math.PI / 180;
+    const big = deg % 45 === 0;
+    const mid = deg % 15 === 0;
+    const r1 = 143;
+    const r2 = big ? 122 : mid ? 130 : 136;
+    const x1 = 150 + r1 * Math.cos(rad), y1 = 150 + r1 * Math.sin(rad);
+    const x2 = 150 + r2 * Math.cos(rad), y2 = 150 + r2 * Math.sin(rad);
+    const ln = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    ln.setAttribute('x1', x1); ln.setAttribute('y1', y1);
+    ln.setAttribute('x2', x2); ln.setAttribute('y2', y2);
+    ln.setAttribute('stroke', big ? 'rgba(0,229,255,0.7)' : 'rgba(0,229,255,0.25)');
+    ln.setAttribute('stroke-width', big ? '1.5' : '0.75');
+    g.appendChild(ln);
+  }
+})();
+
+// ── Math ──────────────────────────────────────
+function haversine(la1, lo1, la2, lo2) {
+  const R = 6371000, r = Math.PI / 180;
+  const dLa = (la2 - la1) * r, dLo = (lo2 - lo1) * r;
+  const a = Math.sin(dLa/2)**2 +
+            Math.cos(la1*r) * Math.cos(la2*r) * Math.sin(dLo/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function bearing(la1, lo1, la2, lo2) {
+  const r = Math.PI / 180;
+  const dLo = (lo2 - lo1) * r;
+  la1 *= r; la2 *= r;
+  const y = Math.sin(dLo) * Math.cos(la2);
+  const x = Math.cos(la1)*Math.sin(la2) - Math.sin(la1)*Math.cos(la2)*Math.cos(dLo);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
+function fmtDist(m) {
+  if (m >= 1000) return [(m / 1000).toFixed(2), 'KM'];
+  if (m >= 10)   return [Math.round(m).toString(), 'METERS'];
+  return [m.toFixed(1), 'METERS'];
+}
+
+// ── Render ────────────────────────────────────
+function render() {
+  if (myLat === null || tLat === null) return;
+
+  const dist = haversine(myLat, myLon, tLat, tLon);
+  const brng  = bearing(myLat, myLon, tLat, tLon);
+
+  const [dv, du] = fmtDist(dist);
+  distVal.textContent  = dv;
+  distUnit.textContent = du;
+  bearingLn.textContent = `BRG  ${Math.round(brng).toString().padStart(3,'0')}°`;
+
+  // Arrow rotation = bearing relative to device heading
+  const arrowAngle = heading !== null ? brng - heading : brng;
+  arrowWrap.style.transform = `rotate(${arrowAngle}deg)`;
+  arrowWrap.style.opacity   = '1';
+
+  // Compass ring counter-rotates with heading so N stays north
+  ringSvg.style.transform = heading !== null ? `rotate(${-heading}deg)` : '';
+
+  // Arrived state (< 8 m)
+  if (dist < 8) {
+    distVal.classList.add('arrived');
+    pulse.style.animation = 'arrived-pulse 1.2s ease-out infinite';
+    pulse.style.opacity   = '1';
+  } else {
+    distVal.classList.remove('arrived');
+    pulse.style.animation = 'none';
+    pulse.style.opacity   = '0';
+  }
+}
+
+// ── GPS ───────────────────────────────────────
+function startGPS() {
+  if (!navigator.geolocation) {
+    statusMsg.textContent = 'GPS not supported';
+    return;
+  }
+  navigator.geolocation.watchPosition(
+    pos => {
+      myLat = pos.coords.latitude;
+      myLon = pos.coords.longitude;
+      myAcc = pos.coords.accuracy;
+      indGPS.classList.add('on');
+      statusMsg.textContent =
+        `${myLat.toFixed(5)},  ${myLon.toFixed(5)}`;
+      const a = Math.round(myAcc);
+      accBadge.textContent = `± ${a} m`;
+      accBadge.className = 'good' ? a < 20 : '';
+      accBadge.className = a < 20 ? 'good' : '';
+      render();
+    },
+    err => {
+      statusMsg.textContent = 'GPS: ' + err.message;
+    },
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
+  );
+}
+
+// ── Compass ───────────────────────────────────
+function bindOrientation() {
+  window.addEventListener('deviceorientation', e => {
+    let h = null;
+    if (e.webkitCompassHeading != null) {
+      // iOS — absolute, 0 = north
+      h = e.webkitCompassHeading;
+    } else if (e.absolute && e.alpha != null) {
+      // Android absolute
+      h = (360 - e.alpha) % 360;
+    }
+    if (h !== null) {
+      heading = h;
+      indCmp.classList.add('on');
+      render();
+    }
+  }, true);
+}
+
+function startCompass() {
+  if (typeof DeviceOrientationEvent === 'undefined') return;
+  if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+    // iOS 13+ — must be triggered by a user gesture; use first tap on page
+    const req = () => {
+      DeviceOrientationEvent.requestPermission()
+        .then(s => { if (s === 'granted') bindOrientation(); })
+        .catch(() => {});
+    };
+    document.addEventListener('click', req, { once: true });
+    document.addEventListener('touchstart', req, { once: true });
+  } else {
+    bindOrientation();
+  }
+}
+
+// ── Set target ────────────────────────────────
+function setTarget() {
+  const la = parseFloat(document.getElementById('lat').value);
+  const lo = parseFloat(document.getElementById('lon').value);
+
+  if (isNaN(la) || isNaN(lo) || la < -90 || la > 90 || lo < -180 || lo > 180) {
+    statusMsg.textContent = 'Invalid coordinates';
+    return;
+  }
+
+  tLat = la; tLon = lo;
+  indTgt.classList.add('on');
+  idleHint.style.display = 'none';
+  document.getElementById('lat').blur();
+  document.getElementById('lon').blur();
+  if (myLat !== null) {
+    statusMsg.textContent =
+      `${myLat.toFixed(5)},  ${myLon.toFixed(5)}`;
+  }
+  render();
+}
+
+document.getElementById('set-btn').addEventListener('click', setTarget);
+['lat','lon'].forEach(id =>
+  document.getElementById(id).addEventListener('keydown', e => {
+    if (e.key === 'Enter') setTarget();
+  })
+);
+
+// ── Boot ──────────────────────────────────────
+startGPS();
+startCompass();
+</script>
+</body>
+</html>

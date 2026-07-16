@@ -100,7 +100,7 @@
       flex: 1;
     }
 
-    input[type=number] {
+    input[type=text] {
       flex: 1;
       background: var(--cdim);
       border: 1px solid rgba(0,229,255,0.18);
@@ -111,13 +111,8 @@
       padding: 11px 8px;
       text-align: center;
       outline: none;
-      /* hide arrows */
-      -moz-appearance: textfield;
-      appearance: textfield;
       transition: border-color .2s, box-shadow .2s;
     }
-    input[type=number]::-webkit-inner-spin-button,
-    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
     input::placeholder { color: var(--mute); font-size: 10px; letter-spacing: 1px; }
     input:focus { border-color: var(--c); box-shadow: 0 0 0 2px var(--cdim); }
 
@@ -314,8 +309,8 @@
 
 <div class="input-row">
   <div class="inputs">
-    <input type="number" id="lat" placeholder="LATITUDE"  step="any" inputmode="decimal" autocomplete="off">
-    <input type="number" id="lon" placeholder="LONGITUDE" step="any" inputmode="decimal" autocomplete="off">
+    <input type="text" id="lat" placeholder="LAT  e.g. 45.4234"  inputmode="text" autocomplete="off" autocorrect="off" spellcheck="false">
+    <input type="text" id="lon" placeholder="LON  e.g. -73.567" inputmode="text" autocomplete="off" autocorrect="off" spellcheck="false">
   </div>
   <button id="set-btn">SET</button>
 </div>

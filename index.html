@@ -89,7 +89,8 @@
       width: 100%;
       padding: 10px 16px;
       display: flex;
-      gap: 8px;
+      flex-direction: column;
+      gap: 6px;
       border-bottom: 1px solid rgba(0,229,255,0.06);
       flex-shrink: 0;
     }
@@ -97,11 +98,11 @@
     .inputs {
       display: flex;
       gap: 6px;
-      flex: 1;
     }
 
     input[type=text] {
       flex: 1;
+      min-width: 0;
       background: var(--cdim);
       border: 1px solid rgba(0,229,255,0.18);
       border-radius: 8px;
@@ -122,17 +123,17 @@
       border-radius: 8px;
       color: var(--c);
       font-family: inherit;
-      font-size: 10px;
-      letter-spacing: 2px;
-      padding: 11px 16px;
+      font-size: 11px;
+      letter-spacing: 3px;
+      padding: 13px;
       cursor: pointer;
       transition: background .15s, box-shadow .15s;
       text-transform: uppercase;
-      flex-shrink: 0;
+      width: 100%;
     }
     #set-btn:active {
       background: rgba(0,229,255,0.25);
-      box-shadow: 0 0 14px var(--cglow);
+      box-shadow: 0 0 18px var(--cglow);
     }
 
     /* ── COMPASS STAGE ───────────────────────── */
@@ -215,9 +216,9 @@
     }
 
     #dist-val {
-      font-size: clamp(40px, 12vw, 64px);
-      font-weight: 200;
-      letter-spacing: -2px;
+      font-size: clamp(48px, 14vw, 72px);
+      font-weight: 600;
+      letter-spacing: -1px;
       color: var(--fg);
       line-height: 1;
       transition: color .3s;
@@ -226,10 +227,11 @@
     #dist-val.arrived { color: var(--c); }
 
     #dist-unit {
-      font-size: 10px;
+      font-size: 14px;
+      font-weight: 500;
       letter-spacing: 4px;
-      color: var(--mute);
-      margin-top: 6px;
+      color: var(--c);
+      margin-top: 8px;
       text-transform: uppercase;
     }
 
@@ -312,7 +314,7 @@
     <input type="text" id="lat" placeholder="LAT  e.g. 45.4234"  inputmode="text" autocomplete="off" autocorrect="off" spellcheck="false">
     <input type="text" id="lon" placeholder="LON  e.g. -73.567" inputmode="text" autocomplete="off" autocorrect="off" spellcheck="false">
   </div>
-  <button id="set-btn">SET</button>
+  <button id="set-btn">GO</button>
 </div>
 
 <div class="stage">
@@ -436,9 +438,10 @@ function bearing(la1, lo1, la2, lo2) {
 }
 
 function fmtDist(m) {
-  if (m >= 1000) return [(m / 1000).toFixed(2), 'KM'];
-  if (m >= 10)   return [Math.round(m).toString(), 'METERS'];
-  return [m.toFixed(1), 'METERS'];
+  const ft = m / 0.3048;
+  if (ft < 500) return [Math.round(ft).toString(), 'FEET'];
+  const mi = m / 1609.344;
+  return [mi.toFixed(2), 'MILES'];
 }
 
 // ── Render ────────────────────────────────────
@@ -461,8 +464,8 @@ function render() {
   // Compass ring counter-rotates with heading so N stays north
   ringSvg.style.transform = heading !== null ? `rotate(${-heading}deg)` : '';
 
-  // Arrived state (< 8 m)
-  if (dist < 8) {
+  // Arrived state (< ~20 ft)
+  if (dist < 6) {
     distVal.classList.add('arrived');
     pulse.style.animation = 'arrived-pulse 1.2s ease-out infinite';
     pulse.style.opacity   = '1';
